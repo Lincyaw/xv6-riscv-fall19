@@ -96,11 +96,8 @@ void find(char *path, char *re)
             break;
         }
         strcpy(buf, path);
-        printf("Path = %s\n", buf);
         p = buf + strlen(buf);
-        printf("Path = %s\n", buf);
         *p++ = '/';
-        printf("Path = %s\n", buf);
         while (read(fd, &de, sizeof(de)) == sizeof(de))
         {
             if (de.inum == 0)
@@ -122,7 +119,6 @@ void find(char *path, char *re)
         }
         break;
     default:
-        // printf("It's a Device, failed.\n");
         break;
     }
     close(fd);
@@ -130,7 +126,7 @@ void find(char *path, char *re)
 
 int main(int argc, char *argv[])
 {
-    printf("begins:  \n");
+    // printf("begins:  \n");
     // if (argc <= 2)
     //     fprintf(2, "Not enough params!!!\n");
     find(argv[1], argv[2]);

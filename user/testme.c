@@ -17,10 +17,31 @@ int main()
     printf("pipe begin: p[0]= %d , p[1]=%d \n", p[0], p[1]);
     pipe(p);
     printf("pipe begin: p[0]= %d , p[1]=%d \n", p[0], p[1]);
-    printf("%d\n", dup(p[0]));
+
+    printf("dup begin : %d\n", dup(p[0]));
     close(0);
     printf("%d\n", dup(p[0]));
 
+    int t[2];
+    printf("tpipe begin == %d\n", pipe(t));
+    printf("pipe begin: t[0]= %d , t[1]=%d \n", t[0], t[1]);
+
+    close(p[0]);
+    close(p[1]);
+    printf("close begin: p[0]= %d , p[1]=%d \n", p[0], p[1]);
+
+    close(p[0]);
+    close(p[1]);
+    printf("close begin: p[0]= %d , p[1]=%d \n", p[0], p[1]);
+
+    close(p[0]);
+    close(p[1]);
+    printf("close begin: p[0]= %d , p[1]=%d \n", p[0], p[1]);
+
+    write(p[1], "fuck", sizeof("fuck"));
+    char buf[64];
+    read(p[0], buf, sizeof(buf));
+    printf("%s", buf);
     // if (fork() == 0)
     // {
     //     close(0);    // 如果是子进程，就把0关了，下面要用0端口读入
