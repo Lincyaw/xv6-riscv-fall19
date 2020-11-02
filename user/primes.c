@@ -2,7 +2,6 @@
 #include "user/user.h"
 /**
  *    https://blog.csdn.net/u013319359/article/details/81091176 
- *    https://www.cnblogs.com/nlp-in-shell/p/11909472.html
 **/
 
 /**
