@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 {
     while (1)
     {
-        print(1, "@ ");
+        print(1, "@");
         memset(cmd_buf, 0, 1024);
         gets(cmd_buf, 1024);
 
