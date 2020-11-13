@@ -54,46 +54,51 @@ void handle(char *cmd)
 
     cmd = trim(cmd);
     // fprintf(2, "cmd: %s\n", cmd);
-
+    // 和实验一的一样，给buf中的每个字符串加个指针，叫做pass
     for (int i = 0; i < 32; i++)
         pass[i] = buf[i];
 
-    char *c = buf[argc];
-    int input_pos = 0, output_pos = 0;
+    char *c = buf[argc]; // 令c指向buf中的第一条指令
+                         // 此时buf区里的指令为空，目前要做的是将输入的一大堆东西解析为一条一条的指令
+
+    int input_pos = 0;
+    int output_pos = 0;
     for (char *p = cmd; *p; p++)
     {
-        if (*p == ' ' || *p == '\n')
+        if (*p == ' ' || *p == '\n') // 同实验一的xargs，读到结束则添加下一个参数
         {
             *c = '\0';
             argc++;
-            c = buf[argc];
+            c = buf[argc]; // 让c指向下一个缓冲区
         }
         else
         {
-            if (*p == '<')
+            if (*p == '<') // 输入重定向
             {
                 input_pos = argc + 1;
             }
-            if (*p == '>')
+            if (*p == '>') // 输出重定向
             {
                 output_pos = argc + 1;
             }
-            *c++ = *p;
+            *c = *p; // 复制参数
+            c++;
         }
     }
     *c = '\0';
     argc++;
-    pass[argc] = 0;
+    pass[argc] = 0; // 最后一个参数的后面一个参数初始化为0,作为标记
 
     // fprintf(2, "inpos: %d, outpos: %d\n", input_pos, output_pos);
 
-    if (input_pos)
+    if (input_pos) // 如果有输入重定向符号
     {
         close(0);
+        // 在open函数中第一个参数pathname是指向想要打开的文件路径名，或者文件名。我们需要注意的是，这个路径名是绝对路径名。文件名则是在当前路径下的。
         open(pass[input_pos], O_RDONLY);
     }
 
-    if (output_pos)
+    if (output_pos) // 如果有输出重定向符号
     {
         close(1);
         open(pass[output_pos], O_WRONLY | O_CREATE);
@@ -103,11 +108,12 @@ void handle(char *cmd)
     int argc2 = 0;
     for (int pos = 0; pos < argc; pos++)
     {
-        if (pos == input_pos - 1)
+        if (pos == input_pos - 1) // 当前pos指向的是'<',pos+1指向的是要打开的文件，在上面已经变成标准输入了，所以可以跳过
             pos += 2;
-        if (pos == output_pos - 1)
+        if (pos == output_pos - 1) // 当前pos指向的是'>',pos+1指向的是要打开的文件，在上面已经变成标准输出了，所以可以跳过
             pos += 2;
-        pass2[argc2++] = pass[pos];
+        pass2[argc2] = pass[pos];
+        argc2++;
     }
     pass2[argc2] = 0;
 
@@ -128,9 +134,9 @@ void handle_cmd()
         int pd[2];
         pipe(pd);
         // int parent_pid = getpid();
-        // fprintf(2, "pid: %d, cmd: %s\n", parent_pid, a);
+        // fprintf(2, "pid: %d, cmd: %s\n", parent_pid, left);
 
-        if (!fork()) //parent
+        if (!fork()) //child
         {
             // fprintf(2, "%d -> %d source\n", parent_pid, getpid());
             // 把pd写端重定向到标准输出
@@ -138,12 +144,12 @@ void handle_cmd()
                 redirect(1, pd);
             handle(left);
         }
-        else if (!fork()) //子进程中，再fork一下
+        else if (!fork()) //父进程中，再fork一下,得到另一个子进程
         {
             // fprintf(2, "%d -> %d sink\n", parent_pid, getpid());
             if (right)
             {
-                // 父进程中将写端给到标准输出了,这里的子进程将父进程写的东西读进来
+                // 上一个子进程中将写端给到标准输出了,这里的子进程将父进程写的东西读进来
                 // 所以将读端给标准输入
                 redirect(0, pd);
                 left = right;
