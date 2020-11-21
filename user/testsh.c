@@ -26,23 +26,24 @@ rand()
 char *
 randstring(char *buf, int n)
 {
-  for(int i = 0; i < n-1; i++)
+  for (int i = 0; i < n - 1; i++)
     buf[i] = "abcdefghijklmnopqrstuvwxyz"[rand() % 26];
-  buf[n-1] = '\0';
+  buf[n - 1] = '\0';
   return buf;
 }
 
 // create a file with the indicated content.
-void
-writefile(char *name, char *data)
+void writefile(char *name, char *data)
 {
   unlink(name); // since no truncation
-  int fd = open(name, O_CREATE|O_WRONLY);
-  if(fd < 0){
+  int fd = open(name, O_CREATE | O_WRONLY);
+  if (fd < 0)
+  {
     fprintf(2, "testsh: could not write %s\n", name);
     exit(-1);
   }
-  if(write(fd, data, strlen(data)) != strlen(data)){
+  if (write(fd, data, strlen(data)) != strlen(data))
+  {
     fprintf(2, "testsh: write failed\n");
     exit(-1);
   }
@@ -50,18 +51,19 @@ writefile(char *name, char *data)
 }
 
 // return the content of a file.
-void
-readfile(char *name, char *data, int max)
+void readfile(char *name, char *data, int max)
 {
   data[0] = '\0';
   int fd = open(name, 0);
-  if(fd < 0){
+  if (fd < 0)
+  {
     fprintf(2, "testsh: open %s failed\n", name);
     return;
   }
-  int n = read(fd, data, max-1);
+  int n = read(fd, data, max - 1);
   close(fd);
-  if(n < 0){
+  if (n < 0)
+  {
     fprintf(2, "testsh: read %s failed\n", name);
     return;
   }
@@ -73,16 +75,20 @@ readfile(char *name, char *data, int max)
 char *
 strstr(char *big, char *small)
 {
-  if(small[0] == '\0')
+  if (small[0] == '\0')
     return big;
-  for(int i = 0; big[i]; i++){
+  for (int i = 0; big[i]; i++)
+  {
     int j;
-    for(j = 0; small[j]; j++){
-      if(big[i+j] != small[j]){
+    for (j = 0; small[j]; j++)
+    {
+      if (big[i + j] != small[j])
+      {
         break;
       }
     }
-    if(small[j] == '\0'){
+    if (small[j] == '\0')
+    {
       return big + i;
     }
   }
@@ -96,8 +102,7 @@ char *shname;
 // its input, collect the output, check that the
 // output includes the expect argument.
 // if tight = 1, don't allow much extraneous output.
-int
-one(char *cmd, char *expect, int tight)
+int one(char *cmd, char *expect, int tight)
 {
   char infile[12], outfile[12];
 
@@ -108,19 +113,23 @@ one(char *cmd, char *expect, int tight)
   unlink(outfile);
 
   int pid = fork();
-  if(pid < 0){
+  if (pid < 0)
+  {
     fprintf(2, "testsh: fork() failed\n");
     exit(-1);
   }
 
-  if(pid == 0){
+  if (pid == 0)
+  {
     close(0);
-    if(open(infile, 0) != 0){
+    if (open(infile, 0) != 0)
+    {
       fprintf(2, "testsh: child open != 0\n");
       exit(-1);
     }
     close(1);
-    if(open(outfile, O_CREATE|O_WRONLY) != 1){
+    if (open(outfile, O_CREATE | O_WRONLY) != 1)
+    {
       fprintf(2, "testsh: child open != 1\n");
       exit(-1);
     }
@@ -132,7 +141,8 @@ one(char *cmd, char *expect, int tight)
     exit(-1);
   }
 
-  if(wait(0) != pid){
+  if (wait(0) != pid)
+  {
     fprintf(2, "testsh: unexpected wait() return\n");
     exit(-1);
   }
@@ -142,8 +152,10 @@ one(char *cmd, char *expect, int tight)
   readfile(outfile, out, sizeof(out));
   unlink(outfile);
 
-  if(strstr(out, expect) != 0){
-    if(tight && strlen(out) > strlen(expect) + 10){
+  if (strstr(out, expect) != 0)
+  {
+    if (tight && strlen(out) > strlen(expect) + 10)
+    {
       fprintf(2, "testsh: saw expected output, but too much else as well\n");
       return 0; // fail
     }
@@ -153,47 +165,52 @@ one(char *cmd, char *expect, int tight)
 }
 
 // test a command with arguments.
-void
-t1(int *ok)
+void t1(int *ok)
 {
   printf("simple echo: ");
-  if(one("echo hello goodbye\n", "hello goodbye", 1) == 0){
+  if (one("echo hello goodbye\n", "hello goodbye", 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     printf("PASS\n");
   }
 }
 
 // test a command with arguments.
-void
-t2(int *ok)
+void t2(int *ok)
 {
   printf("simple grep: ");
-  if(one("grep constitute README\n", "The code in the files that constitute xv6 is", 1) == 0){
+  if (one("grep constitute README\n", "The code in the files that constitute xv6 is", 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     printf("PASS\n");
   }
 }
 
 // test a command, then a newline, then another command.
-void
-t3(int *ok)
+void t3(int *ok)
 {
   printf("two commands: ");
-  if(one("echo x\necho goodbye\n", "goodbye", 1) == 0){
+  if (one("echo x\necho goodbye\n", "goodbye", 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     printf("PASS\n");
   }
 }
 
 // test output redirection: echo xxx > file
-void
-t4(int *ok)
+void t4(int *ok)
 {
   printf("output redirection: ");
 
@@ -205,21 +222,27 @@ t4(int *ok)
 
   char cmd[64];
   strcpy(cmd, "echo ");
-  strcpy(cmd+strlen(cmd), data);
-  strcpy(cmd+strlen(cmd), " > ");
-  strcpy(cmd+strlen(cmd), file);
-  strcpy(cmd+strlen(cmd), "\n");
+  strcpy(cmd + strlen(cmd), data);
+  strcpy(cmd + strlen(cmd), " > ");
+  strcpy(cmd + strlen(cmd), file);
+  strcpy(cmd + strlen(cmd), "\n");
 
-  if(one(cmd, "", 1) == 0){
+  if (one(cmd, "", 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     char buf[64];
     readfile(file, buf, sizeof(buf));
-    if(strstr(buf, data) == 0){
+    if (strstr(buf, data) == 0)
+    {
       printf("FAIL\n");
       *ok = 0;
-    } else {
+    }
+    else
+    {
       printf("PASS\n");
     }
   }
@@ -228,8 +251,7 @@ t4(int *ok)
 }
 
 // test input redirection: cat < file
-void
-t5(int *ok)
+void t5(int *ok)
 {
   printf("input redirection: ");
 
@@ -242,13 +264,16 @@ t5(int *ok)
 
   char cmd[32];
   strcpy(cmd, "cat < ");
-  strcpy(cmd+strlen(cmd), file);
-  strcpy(cmd+strlen(cmd), "\n");
+  strcpy(cmd + strlen(cmd), file);
+  strcpy(cmd + strlen(cmd), "\n");
 
-  if(one(cmd, data, 1) == 0){
+  if (one(cmd, data, 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     printf("PASS\n");
   }
 
@@ -256,21 +281,26 @@ t5(int *ok)
 }
 
 // test a command with both input and output redirection.
-void
-t6(int *ok)
+void t6(int *ok)
 {
   printf("both redirections: ");
   unlink("testsh.out");
-  if(one("grep pointers < README > testsh.out\n", "", 1) == 0){
+  if (one("grep pointers < README > testsh.out\n", "", 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     char buf[64];
     readfile("testsh.out", buf, sizeof(buf));
-    if(strstr(buf, "provides pointers to on-line resources") == 0){
+    if (strstr(buf, "provides pointers to on-line resources") == 0)
+    {
       printf("FAIL\n");
       *ok = 0;
-    } else {
+    }
+    else
+    {
       printf("PASS\n");
     }
   }
@@ -278,8 +308,7 @@ t6(int *ok)
 }
 
 // test a pipe with cat filename | cat.
-void
-t7(int *ok)
+void t7(int *ok)
 {
   printf("simple pipe: ");
 
@@ -292,11 +321,14 @@ t7(int *ok)
   strcpy(cmd, "cat ");
   strcpy(cmd + strlen(cmd), name);
   strcpy(cmd + strlen(cmd), " | cat\n");
-  
-  if(one(cmd, data, 1) == 0){
+
+  if (one(cmd, data, 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     printf("PASS\n");
   }
 
@@ -304,21 +336,26 @@ t7(int *ok)
 }
 
 // test a pipeline that has both redirection and a pipe.
-void
-t8(int *ok)
+void t8(int *ok)
 {
   printf("pipe and redirects: ");
-  
-  if(one("grep suggestions < README | wc > testsh.out\n", "", 1) == 0){
+
+  if (one("grep suggestions < README | wc > testsh.out\n", "", 1) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     char buf[64];
     readfile("testsh.out", buf, sizeof(buf));
-    if(strstr(buf, "1 11 71") == 0){
+    if (strstr(buf, "1 11 71") == 0)
+    {
       printf("FAIL\n");
       *ok = 0;
-    } else {
+    }
+    else
+    {
       printf("PASS\n");
     }
   }
@@ -328,22 +365,23 @@ t8(int *ok)
 
 // ask the shell to execute many commands, to check
 // if it leaks file descriptors.
-void
-t9(int *ok)
+void t9(int *ok)
 {
   printf("lots of commands: ");
 
   char term[32];
   randstring(term, 12);
-  
+
   char *cmd = malloc(25 * 36 + 100);
-  if(cmd == 0){
+  if (cmd == 0)
+  {
     fprintf(2, "testsh: malloc failed\n");
     exit(-1);
   }
 
   cmd[0] = '\0';
-  for(int i = 0; i < 17+(rand()%6); i++){
+  for (int i = 0; i < 17 + (rand() % 6); i++)
+  {
     strcpy(cmd + strlen(cmd), "echo x < README > tso\n");
     strcpy(cmd + strlen(cmd), "echo x | echo\n");
   }
@@ -352,10 +390,13 @@ t9(int *ok)
   strcpy(cmd + strlen(cmd), " > tso\n");
   strcpy(cmd + strlen(cmd), "cat < tso\n");
 
-  if(one(cmd, term, 0) == 0){
+  if (one(cmd, term, 0) == 0)
+  {
     printf("FAIL\n");
     *ok = 0;
-  } else {
+  }
+  else
+  {
     printf("PASS\n");
   }
 
@@ -363,15 +404,15 @@ t9(int *ok)
   free(cmd);
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-  if(argc != 2){
+  if (argc != 2)
+  {
     fprintf(2, "Usage: testsh nsh\n");
     exit(-1);
   }
   shname = argv[1];
-  
+
   seed += getpid();
 
   int ok = 1;
@@ -386,11 +427,14 @@ main(int argc, char *argv[])
   t8(&ok);
   t9(&ok);
 
-  if(ok){
+  if (ok)
+  {
     printf("passed all tests\n");
-  } else {
+  }
+  else
+  {
     printf("failed some tests\n");
   }
-  
+
   exit(0);
 }
