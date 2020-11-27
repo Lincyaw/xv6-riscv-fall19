@@ -14,15 +14,14 @@ static int nlock;
 static struct spinlock *locks[NLOCK];
 
 // assumes locks are not freed
-void
-initlock(struct spinlock *lk, char *name)
+void initlock(struct spinlock *lk, char *name)
 {
   lk->name = name;
   lk->locked = 0;
   lk->cpu = 0;
   lk->nts = 0;
   lk->n = 0;
-  if(nlock >= NLOCK)
+  if (nlock >= NLOCK)
     panic("initlock");
   locks[nlock] = lk;
   nlock++;
@@ -30,23 +29,28 @@ initlock(struct spinlock *lk, char *name)
 
 // Acquire the lock.
 // Loops (spins) until the lock is acquired.
-void
-acquire(struct spinlock *lk)
+void acquire(struct spinlock *lk)
 {
   push_off(); // disable interrupts to avoid deadlock.
-  if(holding(lk))
+  if (holding(lk))
     panic("acquire");
 
   __sync_fetch_and_add(&(lk->n), 1);
-    
+
   // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
   //   a5 = 1
   //   s1 = &lk->locked
   //   amoswap.w.aq a5, a5, (s1)
-  while(__sync_lock_test_and_set(&lk->locked, 1) != 0) {
-     __sync_fetch_and_add(&lk->nts, 1);
+  //  __sync_lock_test_and_set 这一函数接收两个参数，要写入的地址和要写入的值，返回值是写入地址原来的值。
+
+  // 当lk->locked==0，即当前锁空闲时，__sync_lock_test_and_set在返回0的同时，
+  // 会往lk->locked写入1,返回0之后退出while循环，符合我们的预期。
+  while (__sync_lock_test_and_set(&lk->locked, 1) != 0)
+  {
+    //下面这行代码和锁的功能无关，但当然它有另外的作用。再次不做解释，有兴趣的同学可以自行研究。
+    __sync_fetch_and_add(&lk->nts, 1);
   }
-  
+
   // Tell the C compiler and the processor to not move loads or stores
   // past this point, to ensure that the critical section's memory
   // references happen strictly after the lock is acquired.
@@ -58,10 +62,9 @@ acquire(struct spinlock *lk)
 }
 
 // Release the lock.
-void
-release(struct spinlock *lk)
+void release(struct spinlock *lk)
 {
-  if(!holding(lk))
+  if (!holding(lk))
     panic("release");
 
   lk->cpu = 0;
@@ -87,8 +90,7 @@ release(struct spinlock *lk)
 }
 
 // Check whether this cpu is holding the lock.
-int
-holding(struct spinlock *lk)
+int holding(struct spinlock *lk)
 {
   int r;
   push_off();
@@ -101,34 +103,31 @@ holding(struct spinlock *lk)
 // it takes two pop_off()s to undo two push_off()s.  Also, if interrupts
 // are initially off, then push_off, pop_off leaves them off.
 
-void
-push_off(void)
+void push_off(void)
 {
   int old = intr_get();
 
   intr_off();
-  if(mycpu()->noff == 0)
+  if (mycpu()->noff == 0)
     mycpu()->intena = old;
   mycpu()->noff += 1;
 }
 
-void
-pop_off(void)
+void pop_off(void)
 {
   struct cpu *c = mycpu();
-  if(intr_get())
+  if (intr_get())
     panic("pop_off - interruptible");
   c->noff -= 1;
-  if(c->noff < 0)
+  if (c->noff < 0)
     panic("pop_off");
-  if(c->noff == 0 && c->intena)
+  if (c->noff == 0 && c->intena)
     intr_on();
 }
 
-void
-print_lock(struct spinlock *lk)
+void print_lock(struct spinlock *lk)
 {
-  if(lk->n > 0) 
+  if (lk->n > 0)
     printf("lock: %s: #test-and-set %d #acquire() %d\n", lk->name, lk->nts, lk->n);
 }
 
@@ -137,13 +136,16 @@ sys_ntas(void)
 {
   int zero = 0;
   int tot = 0;
-  
-  if (argint(0, &zero) < 0) {
+
+  if (argint(0, &zero) < 0)
+  {
     return -1;
   }
-  if(zero == 0) {
-    for(int i = 0; i < NLOCK; i++) {
-      if(locks[i] == 0)
+  if (zero == 0)
+  {
+    for (int i = 0; i < NLOCK; i++)
+    {
+      if (locks[i] == 0)
         break;
       locks[i]->nts = 0;
       locks[i]->n = 0;
@@ -152,11 +154,13 @@ sys_ntas(void)
   }
 
   printf("=== lock kmem/bcache stats\n");
-  for(int i = 0; i < NLOCK; i++) {
-    if(locks[i] == 0)
+  for (int i = 0; i < NLOCK; i++)
+  {
+    if (locks[i] == 0)
       break;
-    if(strncmp(locks[i]->name, "bcache", strlen("bcache")) == 0 ||
-       strncmp(locks[i]->name, "kmem", strlen("kmem")) == 0) {
+    if (strncmp(locks[i]->name, "bcache", strlen("bcache")) == 0 ||
+        strncmp(locks[i]->name, "kmem", strlen("kmem")) == 0)
+    {
       tot += locks[i]->nts;
       print_lock(locks[i]);
     }
@@ -165,12 +169,15 @@ sys_ntas(void)
   printf("=== top 5 contended locks:\n");
   int last = 100000000;
   // stupid way to compute top 5 contended locks
-  for(int t= 0; t < 5; t++) {
+  for (int t = 0; t < 5; t++)
+  {
     int top = 0;
-    for(int i = 0; i < NLOCK; i++) {
-      if(locks[i] == 0)
+    for (int i = 0; i < NLOCK; i++)
+    {
+      if (locks[i] == 0)
         break;
-      if(locks[i]->nts > locks[top]->nts && locks[i]->nts < last) {
+      if (locks[i]->nts > locks[top]->nts && locks[i]->nts < last)
+      {
         top = i;
       }
     }
