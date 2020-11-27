@@ -36,7 +36,29 @@ void kinit()
   // 把空闲内存加到链表里: 把每个空闲页逐一加到链表里来实现此功能的
   freerange(end, (void *)PHYSTOP);
 }
+void kfree_for_cpu(void *pa, int id)
+{
+  push_off();
+  // int id = cpuid();
+  pop_off();
 
+  struct run *r;
+
+  if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end || (uint64)pa >= PHYSTOP)
+    panic("kfree");
+
+  // Fill with junk to catch dangling refs.
+  // 首先将 char *v 开始的页物理内存初始化为1，这是为了让之前使用它的代码不能再读取到有效的内容，
+  // 期望这些代码能尽早崩溃以发现问题所在。然后将这空闲页物理内存加到链表头。
+  memset(pa, 1, PGSIZE);
+
+  r = (struct run *)pa;
+
+  acquire(&kmem[id].lock);
+  r->next = kmem[id].freelist;
+  kmem[id].freelist = r;
+  release(&kmem[id].lock);
+}
 void freerange(void *pa_start, void *pa_end)
 {
 
@@ -50,8 +72,12 @@ void freerange(void *pa_start, void *pa_end)
   // 而是《xv6 book》Figure 3.3中Kernel data之后可以用来分配的内存位置，
   // 也因此真正能分配出去的物理内存并没有128M。分配器刚开始是无内存可用的，
   // 通过对kfree的调用使得它拥有了可以管理的内存。
+  int id = 0;
   for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE)
-    kfree(p);
+  {
+    kfree_for_cpu(p, id % NCPU);
+    id++;
+  }
 }
 
 // Free the page of physical memory pointed at by v,

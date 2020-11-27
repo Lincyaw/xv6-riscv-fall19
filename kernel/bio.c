@@ -21,12 +21,7 @@
 #include "defs.h"
 #include "fs.h"
 #include "buf.h"
-/*
-  bcache维护了一个由静态数组struct buf buf[NBUF]组成的双向链表，
-  它以块为单位，每次读入或写出一个磁盘块，放到一个内存缓存块中（bcache.buf），
-  同时自旋锁bcache.lock用于用户互斥访问。
-  所有对缓存块的访问都是通过bcache.head引用链表来实现的，而不是buf数组。
-*/
+
 struct
 {
   struct spinlock lock;
