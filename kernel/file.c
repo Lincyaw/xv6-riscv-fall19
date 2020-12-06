@@ -17,7 +17,6 @@ struct devsw devsw[NDEV];
 struct
 {
 	struct spinlock lock;
-	struct file file[NFILE];
 } ftable;
 
 void fileinit(void)

@@ -9,12 +9,14 @@
 
 static int nsizes; // the number of entries in bd_sizes array
 
+#define in_range(a, b, x) (((x) >= (a)) && ((x) < (b)))
 #define LEAF_SIZE 16                          // The smallest block size
 #define MAXSIZE (nsizes - 1)                  // Largest index in bd_sizes array
 #define BLK_SIZE(k) ((1L << (k)) * LEAF_SIZE) // Size of block at size k
 #define HEAP_SIZE BLK_SIZE(MAXSIZE)
 #define NBLK(k) (1 << (MAXSIZE - k))                   // Number of block at size k
-#define ROUNDUP(n, sz) (((((n)-1) / (sz)) + 1) * (sz)) // Round up to the next multiple of sz, 四舍五入
+#define ROUNDUP(n, sz) (((((n)-1) / (sz)) + 1) * (sz)) // Round up to the next multiple of sz
+// 即四舍五入
 
 typedef struct list Bd_list;
 
@@ -29,7 +31,8 @@ typedef struct list Bd_list;
 // （因此，一个char记录了8个块的信息）。
 struct sz_info
 {
-  Bd_list free; // 声明链表
+  // 声明链表
+  Bd_list free;
   char *alloc;
   char *split;
 };
@@ -43,17 +46,22 @@ static struct spinlock lock;
 // 如果index的位置的bit是1就return 1;
 int bit_isset(char *array, int index)
 {
-  char b = array[index / 8];   // 整除8,得到在哪个char
-  char m = (1 << (index % 8)); // 模8,得到在char的第几个bit
+  // 整除8,得到在哪个char
+  char b = array[index / 8];
+  // 模8,得到在char的第几个bit
+  char m = (1 << (index % 8));
   return (b & m) == m;
 }
 
 // Set bit at position index in array to 1
 void bit_set(char *array, int index)
 {
-  char b = array[index / 8];   // 整除8,得到在哪个char
-  char m = (1 << (index % 8)); // 模8,得到在char的第几个bit
-  array[index / 8] = (b | m);  //该位置或上去
+  // 整除8,得到在哪个char
+  char b = array[index / 8];
+  // 模8,得到在char的第几个bit
+  char m = (1 << (index % 8));
+  //该位置或上去
+  array[index / 8] = (b | m);
 }
 
 // Clear bit at position index in array
@@ -63,16 +71,18 @@ void bit_clear(char *array, int index)
   char m = (1 << (index % 8));
   array[index / 8] = (b & ~m);
 }
-// 反转index位置的bit
+// 反转比index表示的块的更小一层的位置的bit对应的上一层的标识位
+// 其实就是除了个2，懂得都懂
 void bit_toggle(char *array, int index)
 {
   index >>= 1;
   char m = (1 << (index % 8));
   array[index / 8] ^= m;
 }
-// 得到index位置的bit
+// 与bit_toggle一样
 int bit_get(char *array, int index)
 {
+  index >>= 1;
   return bit_isset(array, index);
 }
 
@@ -85,15 +95,21 @@ void bd_print_vector(char *vector, int len)
   lb = 0;
   for (int b = 0; b < len; b++)
   {
-    if (last == bit_isset(vector, b)) // 如果当前b位置上的bit值和上一个位置上的bit值相同则跳过
-                                      // 这里就可以保证lb到b的区间里的bit值是一样的
+    // 如果当前b位置上的bit值和上一个位置上的bit值相同则跳过
+    // 这里就可以保证lb到b的区间里的bit值是一样的
+    if (last == bit_isset(vector, b))
       continue;
-    if (last == 1)                // 如果不一样的话，如果last是1,则说明前面的那段空间里是已经分配过的内存，而现在的b的位置开始是没有分配过的
-      printf(" [%d, %d)", lb, b); //打印上一个b和现在的b
-    lb = b;                       // lb保存的是上一个b
-    last = bit_isset(vector, b);  // last保存的是上一个b的位置上的bit的值
+    // 如果不一样的话，如果last是1,则说明前面的那段空间里是已经分配过的内存，而现在的b的位置开始是没有分配过的
+    if (last == 1)
+      //打印上一个b和现在的b
+      printf(" [%d, %d)", lb, b);
+    // lb保存的是上一个b
+    lb = b;
+    // last保存的是上一个b的位置上的bit的值
+    last = bit_isset(vector, b);
   }
-  if (lb == 0 || last == 1) // 考虑vector长度为0时 以及 b==len时的情况
+  // 考虑vector长度为0时 以及 b==len时的情况
+  if (lb == 0 || last == 1)
   {
     printf(" [%d, %d)", lb, len);
   }
@@ -136,7 +152,8 @@ int firstk(uint64 n)
 // 计算大小为k的地址p在第几块内存中
 int blk_index(int k, char *p)
 {
-  int n = p - (char *)bd_base; // n为p的地址偏移量
+  // n为p的地址偏移量
+  int n = p - (char *)bd_base;
   return n / BLK_SIZE(k);
 }
 
@@ -158,26 +175,38 @@ bd_malloc(uint64 nbytes)
 
   // Find a free block >= nbytes, starting with smallest k possible
   fk = firstk(nbytes);
+
+  // 这个循环用于找到符合fk大小需求的块，k为找到的存在于空闲链表中的块
   for (k = fk; k < nsizes; k++)
   {
-    if (!lst_empty(&bd_sizes[k].free)) // 第k个大小的内存是否为空，如果不为空，就得申请更大的内存了
+    // 第k个大小的内存是否为空，如果不为空，就得申请更大的内存了
+    if (!lst_empty(&bd_sizes[k].free))
       break;
   }
-  if (k >= nsizes) // 如果k大于最大的能申请的内存，就完蛋了
-  {                // No free blocks?
+  // 如果k大于最大的能申请的内存，就完蛋了
+  if (k >= nsizes)
+  { // No free blocks?
     release(&lock);
     return 0;
   }
 
   // Found a block; pop it and potentially split it.
+  // 把找到的k从空闲链表中pop出来
   char *p = lst_pop(&bd_sizes[k].free);
+  // 由于拿到的这块内存要被分配了，所以要将这块标记为已分配
+  // 在原来的代码中是像下面这样的
+  // bit_set(bd_sizes[k].alloc, blk_index(k, p));
+  // 导致的问题就是，每个内存块都有一个bit来指示被占用或释放。
+  // 对于兄弟块，可以共用一个bit，用异或操作实现
   bit_toggle(bd_sizes[k].alloc, blk_index(k, p));
+  // 如果分配到的块的大小k，是大于需求的fk的，那么要将其分割到合适的大小
   for (; k > fk; k--)
   {
     // split a block at size k and mark one half allocated at size k-1
     // and put the buddy on the free list at size k-1
     // 分割为1/2 balabala
     char *q = p + BLK_SIZE(k - 1); // p's buddy
+    // 由于要分割，所以将这块标记为被分割
     bit_set(bd_sizes[k].split, blk_index(k, p));
     bit_toggle(bd_sizes[k - 1].alloc, blk_index(k - 1, p));
     lst_push(&bd_sizes[k - 1].free, q);
@@ -276,7 +305,6 @@ void bd_mark(void *start, void *stop)
   }
 }
 
-#define in_range(a, b, x) (((x) >= (a)) && ((x) < (b)))
 // If a block is marked as allocated and the buddy is free, put the
 // buddy on the free list at size k.
 int bd_initfree_pair(int k, int bi, void *allow_left, void *allow_right)
