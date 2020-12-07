@@ -209,7 +209,7 @@ bd_malloc(uint64 nbytes)
     // 由于要分割，所以将这块标记为被分割
     bit_set(bd_sizes[k].split, blk_index(k, p));
     // 获取兄弟块中的一块(随便哪块都行), 原来是1表示还有1块空余,原来是0表示两块都是空的
-    // 1去异或1,表示buddy两块都没了, 1去异或1表示还剩一块,都消耗了1块
+    // 1去异或1,表示buddy两块都没了, 1去异或0表示还剩一块,都消耗了1块
     bit_toggle(bd_sizes[k - 1].alloc, blk_index(k - 1, p));
     lst_push(&bd_sizes[k - 1].free, q);
   }
@@ -310,14 +310,17 @@ void bd_mark(void *start, void *stop)
 
 // If a block is marked as allocated and the buddy is free, put the
 // buddy on the free list at size k.
+//如果一个块被标记为已分配，而好友是空闲的，则将好友放在空闲列表中，大小为k。
 int bd_initfree_pair(int k, int bi, void *allow_left, void *allow_right)
 {
   int buddy = (bi % 2 == 0) ? bi + 1 : bi - 1;
   int free = 0;
+  // 如果有一个是空闲的
   if (bit_get(bd_sizes[k].alloc, bi))
   {
     // one of the pair is free
     free = BLK_SIZE(k);
+    // 如果buddy是在对应的区间内
     if (in_range(allow_left, allow_right, addr(k, buddy)))
       lst_push(&bd_sizes[k].free, addr(k, buddy)); // put buddy on free list
     else
@@ -329,8 +332,8 @@ int bd_initfree_pair(int k, int bi, void *allow_left, void *allow_right)
 // Initialize the free lists for each size k.  For each size k, there
 // are only two pairs that may have a buddy that should be on free list:
 // bd_left and bd_right.
-// 初始化每个大小k的自由列表。对于每个大小k，只有两个对可能有一个好友应该在自由列表中：bd_left和bd_right。
-
+// 初始化每个大小k的自由列表。
+// 对于每个大小k，只有两个对可能有一个好友应该在自由列表中：bd_left和bd_right。
 int bd_initfree(void *bd_left, void *bd_right, void *allow_left, void *allow_right)
 {
   int free = 0;
