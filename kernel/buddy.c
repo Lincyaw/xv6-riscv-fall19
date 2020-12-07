@@ -16,7 +16,7 @@ static int nsizes; // the number of entries in bd_sizes array
 #define HEAP_SIZE BLK_SIZE(MAXSIZE)
 #define NBLK(k) (1 << (MAXSIZE - k))                   // Number of block at size k
 #define ROUNDUP(n, sz) (((((n)-1) / (sz)) + 1) * (sz)) // Round up to the next multiple of sz
-// 即四舍五入
+// 即四舍五入到下一个sz的倍数, 返回值一定大于等于n. 即: n<=k*size, k=n/size+1
 
 typedef struct list Bd_list;
 
@@ -208,6 +208,8 @@ bd_malloc(uint64 nbytes)
     char *q = p + BLK_SIZE(k - 1); // p's buddy
     // 由于要分割，所以将这块标记为被分割
     bit_set(bd_sizes[k].split, blk_index(k, p));
+    // 获取兄弟块中的一块(随便哪块都行), 原来是1表示还有1块空余,原来是0表示两块都是空的
+    // 1去异或1,表示buddy两块都没了, 1去异或1表示还剩一块,都消耗了1块
     bit_toggle(bd_sizes[k - 1].alloc, blk_index(k - 1, p));
     lst_push(&bd_sizes[k - 1].free, q);
   }
@@ -217,6 +219,7 @@ bd_malloc(uint64 nbytes)
 }
 
 // Find the size of the block that p points to.
+// 找出p指向的块的大小。
 int size(char *p)
 {
   for (int k = 0; k < nsizes; k++)
@@ -326,6 +329,8 @@ int bd_initfree_pair(int k, int bi, void *allow_left, void *allow_right)
 // Initialize the free lists for each size k.  For each size k, there
 // are only two pairs that may have a buddy that should be on free list:
 // bd_left and bd_right.
+// 初始化每个大小k的自由列表。对于每个大小k，只有两个对可能有一个好友应该在自由列表中：bd_left和bd_right。
+
 int bd_initfree(void *bd_left, void *bd_right, void *allow_left, void *allow_right)
 {
   int free = 0;
@@ -365,6 +370,13 @@ int bd_mark_unavailable(void *end, void *left)
 }
 
 // Initialize the buddy allocator: it manages memory from [base, end).
+// bd_malloc()对应于分配过程，bd_free()对应于释放过程。
+// bd_init()主要做了以下工作：
+// 起始地址/末地址16字节地址对齐
+// 初始化元数据区
+// 标记元数据区
+// 标记无效区
+// 初始化各层空闲链表
 void bd_init(void *base, void *end)
 {
   char *p = (char *)ROUNDUP((uint64)base, LEAF_SIZE);

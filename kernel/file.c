@@ -29,10 +29,8 @@ struct file *
 filealloc(void)
 {
 	struct file *f;
-
 	acquire(&ftable.lock);
 	f = bd_malloc(sizeof(struct file));
-
 	if (f)
 	{
 		memset(f, 0, sizeof(struct file));
@@ -40,7 +38,6 @@ filealloc(void)
 		release(&ftable.lock);
 		return f;
 	}
-
 	release(&ftable.lock);
 	return 0;
 }
